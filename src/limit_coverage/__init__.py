@@ -5,7 +5,7 @@ import sqlite3
 import typing
 
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 FileID = typing.NewType("FileID", int)
 ContextID = typing.NewType("ContextID", int)
