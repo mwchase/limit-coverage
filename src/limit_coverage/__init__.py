@@ -5,7 +5,7 @@ import sqlite3
 import typing
 
 
-__version__ = '0.1.0'
+__version__ = "0.1.0"
 
 FileID = typing.NewType("FileID", int)
 ContextID = typing.NewType("ContextID", int)
@@ -62,7 +62,7 @@ def get_cursor() -> sqlite3.Cursor:
     return sqlite3.connect(".coverage").cursor()
 
 
-def get_rows_to_drop(
+def get_rows_to_drop_arc(
     c: sqlite3.Cursor, whitelisted_ids: typing.Mapping[FileID, typing.Set[ContextID]]
 ) -> typing.List[int]:
 
@@ -84,6 +84,54 @@ def delete_arcs(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
 
     for rowid in rows_to_drop:
         c.execute("DELETE FROM arc WHERE rowid=?", (rowid,))
+
+
+def get_rows_to_drop_lines(
+    c: sqlite3.Cursor, whitelisted_ids: typing.Mapping[FileID, typing.Set[ContextID]]
+) -> typing.List[int]:
+
+    rows_to_drop: typing.List[int] = []
+
+    for rowid, file_id, context_id in c.execute(
+        "SELECT rowid, file_id, context_id FROM line_map;"
+    ):
+        allowed_contexts = whitelisted_ids.get(FileID(file_id))
+        if allowed_contexts is None:
+            continue
+        if ContextID(context_id) not in allowed_contexts:
+            rows_to_drop.append(rowid)
+
+    return rows_to_drop
+
+
+def delete_lines(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
+
+    for rowid in rows_to_drop:
+        c.execute("DELETE FROM line_map WHERE rowid=?", (rowid,))
+
+
+def get_rows_to_drop_line_bits(
+    c: sqlite3.Cursor, whitelisted_ids: typing.Mapping[FileID, typing.Set[ContextID]]
+) -> typing.List[int]:
+
+    rows_to_drop: typing.List[int] = []
+
+    for rowid, file_id, context_id in c.execute(
+        "SELECT rowid, file_id, context_id FROM line_bits;"
+    ):
+        allowed_contexts = whitelisted_ids.get(FileID(file_id))
+        if allowed_contexts is None:
+            continue
+        if ContextID(context_id) not in allowed_contexts:
+            rows_to_drop.append(rowid)
+
+    return rows_to_drop
+
+
+def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
+
+    for rowid in rows_to_drop:
+        c.execute("DELETE FROM line_bits WHERE rowid=?", (rowid,))
 
 
 def get_whitelisted_ids(
@@ -114,24 +162,42 @@ def get_whitelisted_ids(
     return whitelisted_ids
 
 
-def schema_3(c):
-
-    delete_arcs(
-        c,
-        get_rows_to_drop(
-            c, get_whitelisted_ids(c, get_contexts_for_module(*get_module_contexts(c)))
-        ),
-    )
+def _common(c):
+    return get_whitelisted_ids(c, get_contexts_for_module(*get_module_contexts(c)))
 
 
-SCHEMATA = {
-    3: schema_3,
-    7: None,
-}
+def line_schema_3(c):
+    delete_lines(c, get_rows_to_drop_lines(c, _common(c)))
+
+
+def line_schema_7(c):
+    delete_line_bits(c, get_rows_to_drop_line_bits(c, _common(c)))
+
+
+SCHEMATA_LINE = {3: line_schema_3, 7: line_schema_7}
+
+
+def arc_schema_3_and_7(c):
+
+    delete_arcs(c, get_rows_to_drop_arc(c, _common(c)))
+
+
+SCHEMATA_ARC = {3: arc_schema_3_and_7, 7: arc_schema_3_and_7}
+
+
+def meta_schema_3(c):
+    return c.execute("SELECT has_arcs FROM meta;").fetchone()[0]
+
+
+def meta_schema_7(c):
+    return c.execute("SELECT value FROM meta WHERE key='has_arcs';").fetchone()[0]
 
 
 def get_schema(c):
     return c.execute("SELECT version FROM coverage_schema;").fetchone()[0]
+
+
+SCHEMATA_META = {3: meta_schema_3, 7: meta_schema_7}
 
 
 def main():
@@ -139,7 +205,13 @@ def main():
     c = get_cursor()
     schema = get_schema(c)
 
-    SCHEMATA[schema](c)
+    if SCHEMATA_META[schema](c):
+
+        SCHEMATA_ARC[schema](c)
+
+    else:
+
+        SCHEMATA_LINE[schema](c)
 
     c.connection.commit()
     c.connection.close()
