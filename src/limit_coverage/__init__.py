@@ -114,9 +114,7 @@ def get_whitelisted_ids(
     return whitelisted_ids
 
 
-def main():
-
-    c = get_cursor()
+def schema_3(c):
 
     delete_arcs(
         c,
@@ -124,6 +122,24 @@ def main():
             c, get_whitelisted_ids(c, get_contexts_for_module(*get_module_contexts(c)))
         ),
     )
+
+
+SCHEMATA = {
+    3: schema_3,
+    7: None,
+}
+
+
+def get_schema(c):
+    return c.execute("SELECT version FROM coverage_schema;").fetchone()[0]
+
+
+def main():
+
+    c = get_cursor()
+    schema = get_schema(c)
+
+    SCHEMATA[schema](c)
 
     c.connection.commit()
     c.connection.close()
