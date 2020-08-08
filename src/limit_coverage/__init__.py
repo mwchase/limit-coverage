@@ -1,5 +1,6 @@
 import collections
 import os
+import pathlib
 import re
 import sqlite3
 import typing
@@ -134,20 +135,34 @@ def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
         c.execute("DELETE FROM line_bits WHERE rowid=?", (rowid,))
 
 
+def conditional_src(cwd: str) -> str:
+    maybe_src = os.path.join(cwd, str)
+    if os.path.isdir(maybe_src):
+        return maybe_src
+    return cwd
+
+
 def get_whitelisted_ids(
     c: sqlite3.Cursor,
     contexts_for_module: typing.Mapping[SourceModule, typing.Set[ContextID]],
 ) -> typing.Mapping[FileID, typing.Set[ContextID]]:
 
     cwd = os.getcwd()
-    source_root = os.path.join(cwd, "src") if os.path.isdir("src") else cwd
 
     pardir = os.pardir + os.sep
     tests = "tests" + os.sep
+    src = "src" + os.sep
 
     whitelisted_ids: typing.MutableMapping[FileID, typing.Set[ContextID]] = {}
 
     for id_, path in c.execute("SELECT id, path FROM file;"):
+        repo_path = os.path.relpath(path, cwd)
+        # Single project case
+        if repo_path.startswith((src, tests)):
+            source_root = conditional_src(cwd)
+        # "Monorepo" case
+        else:
+            source_root = conditional_src(os.path.join(cwd, pathlib.Path(repo_path).parts[0]))
         relpath = os.path.relpath(path, source_root)
         if relpath.startswith((pardir, tests)):
             continue
