@@ -9,9 +9,15 @@ import typing
 __version__ = "0.2.0"
 
 FileID = typing.NewType("FileID", int)
+FileID.__doc__ = """\
+The numeric identifier of a source file in the coverage database."""
 ContextID = typing.NewType("ContextID", int)
+ContextID.__doc__ = """\
+The numeric identifier of an execution context in the coverage database."""
 SourceModule = typing.NewType("SourceModule", str)
+SourceModule.__doc__ = """The import path of a Python module."""
 TestModule = typing.NewType("TestModule", str)
+TestModule.__doc__ = """The import path of a Python module containing tests."""
 
 MODULE_RE = re.compile(r"tests\.((?:\w+\.)*)test_(\w+)")
 
