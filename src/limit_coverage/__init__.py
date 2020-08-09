@@ -92,8 +92,7 @@ def get_rows_to_drop_arc(
 
 def delete_arcs(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
 
-    for rowid in rows_to_drop:
-        c.execute("DELETE FROM arc WHERE rowid=?", (rowid,))
+    c.executemany("DELETE FROM arc WHERE rowid=?", rows_to_drop)
 
 
 def get_rows_to_drop_lines(
@@ -116,8 +115,7 @@ def get_rows_to_drop_lines(
 
 def delete_lines(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
 
-    for rowid in rows_to_drop:
-        c.execute("DELETE FROM line_map WHERE rowid=?", (rowid,))
+    c.executemany("DELETE FROM line_map WHERE rowid=?", rows_to_drop)
 
 
 def get_rows_to_drop_line_bits(
@@ -140,8 +138,7 @@ def get_rows_to_drop_line_bits(
 
 def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
 
-    for rowid in rows_to_drop:
-        c.execute("DELETE FROM line_bits WHERE rowid=?", (rowid,))
+    c.executemany("DELETE FROM line_bits WHERE rowid=?", rows_to_drop)
 
 
 def conditional_src(cwd: str) -> str:
