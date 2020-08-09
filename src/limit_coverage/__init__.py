@@ -21,6 +21,8 @@ TestModule.__doc__ = """The import path of a Python module containing tests."""
 
 MODULE_RE = re.compile(r"tests\.((?:\w+\.)*)test_(\w+)")
 
+Rows = typing.List[typing.Tuple[int]]
+
 
 def modules_under_test(test_module: TestModule) -> typing.Iterator[SourceModule]:
     # TODO: take the pragmas and such
@@ -74,9 +76,9 @@ def get_cursor() -> sqlite3.Cursor:
 
 def get_rows_to_drop_arc(
     c: sqlite3.Cursor, whitelisted_ids: typing.Mapping[FileID, typing.Set[ContextID]]
-) -> typing.List[int]:
+) -> Rows:
 
-    rows_to_drop: typing.List[int] = []
+    rows_to_drop: Rows = []
 
     for rowid, file_id, context_id in c.execute(
         "SELECT rowid, file_id, context_id FROM arc;"
@@ -85,21 +87,21 @@ def get_rows_to_drop_arc(
         if allowed_contexts is None:
             continue
         if ContextID(context_id) not in allowed_contexts:
-            rows_to_drop.append(rowid)
+            rows_to_drop.append((rowid,))
 
     return rows_to_drop
 
 
-def delete_arcs(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
+def delete_arcs(c: sqlite3.Cursor, rows_to_drop: Rows):
 
     c.executemany("DELETE FROM arc WHERE rowid=?", rows_to_drop)
 
 
 def get_rows_to_drop_lines(
     c: sqlite3.Cursor, whitelisted_ids: typing.Mapping[FileID, typing.Set[ContextID]]
-) -> typing.List[int]:
+) -> Rows:
 
-    rows_to_drop: typing.List[int] = []
+    rows_to_drop: Rows = []
 
     for rowid, file_id, context_id in c.execute(
         "SELECT rowid, file_id, context_id FROM line_map;"
@@ -108,21 +110,21 @@ def get_rows_to_drop_lines(
         if allowed_contexts is None:
             continue
         if ContextID(context_id) not in allowed_contexts:
-            rows_to_drop.append(rowid)
+            rows_to_drop.append((rowid,))
 
     return rows_to_drop
 
 
-def delete_lines(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
+def delete_lines(c: sqlite3.Cursor, rows_to_drop: Rows):
 
     c.executemany("DELETE FROM line_map WHERE rowid=?", rows_to_drop)
 
 
 def get_rows_to_drop_line_bits(
     c: sqlite3.Cursor, whitelisted_ids: typing.Mapping[FileID, typing.Set[ContextID]]
-) -> typing.List[int]:
+) -> Rows:
 
-    rows_to_drop: typing.List[int] = []
+    rows_to_drop: Rows = []
 
     for rowid, file_id, context_id in c.execute(
         "SELECT rowid, file_id, context_id FROM line_bits;"
@@ -131,12 +133,12 @@ def get_rows_to_drop_line_bits(
         if allowed_contexts is None:
             continue
         if ContextID(context_id) not in allowed_contexts:
-            rows_to_drop.append(rowid)
+            rows_to_drop.append((rowid,))
 
     return rows_to_drop
 
 
-def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
+def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: Rows):
 
     c.executemany("DELETE FROM line_bits WHERE rowid=?", rows_to_drop)
 
