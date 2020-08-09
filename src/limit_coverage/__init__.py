@@ -142,7 +142,7 @@ def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: typing.List[int]):
 
 
 def conditional_src(cwd: str) -> str:
-    maybe_src = os.path.join(cwd, str)
+    maybe_src = os.path.join(cwd, "src")
     if os.path.isdir(maybe_src):
         return maybe_src
     return cwd
