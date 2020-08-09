@@ -24,6 +24,9 @@ MODULE_RE = re.compile(r"tests\.((?:\w+\.)*)test_(\w+)")
 
 def modules_under_test(test_module: TestModule) -> typing.Iterator[SourceModule]:
     # TODO: take the pragmas and such
+    # Since it's hard to even FIND the module in a monorepo,
+    # instead of pragmas, this needs a top-level config file that maps test
+    # modules to source modules, and supports disabling "auto-discovery".
     match = MODULE_RE.fullmatch(test_module)
     if match:
         yield SourceModule("".join(match.groups()))
