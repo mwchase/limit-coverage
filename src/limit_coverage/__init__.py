@@ -6,7 +6,7 @@ import sqlite3
 import typing
 
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 FileID = typing.NewType("FileID", int)
 FileID.__doc__ = """\

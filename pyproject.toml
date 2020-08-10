@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "limit-coverage"
-version = "0.3.0"
+version = "0.3.1"
 description = ""
 authors = ["Max W Chase <max.chase@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.6"
 
 [tool.poetry.dev-dependencies]
 
