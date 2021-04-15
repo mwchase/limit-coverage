@@ -1,8 +1,12 @@
+import argparse
 import collections
 import os
 import pathlib
 import re
+import shutil
 import sqlite3
+import sys
+import tempfile
 import typing
 
 
@@ -70,8 +74,8 @@ def get_contexts_for_module(
     return contexts_for_module
 
 
-def get_cursor() -> sqlite3.Cursor:
-    return sqlite3.connect(".coverage").cursor()
+def get_cursor(cov_file) -> sqlite3.Cursor:
+    return sqlite3.connect(cov_file).cursor()
 
 
 def get_rows_to_drop_arc(
@@ -223,18 +227,32 @@ def get_schema(c):
 SCHEMATA_META = {3: meta_schema_3, 7: meta_schema_7}
 
 
+def parse_args(args):
+    default = os.environ.get("COVERAGE_FILE", ".coverage")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", default=default)
+    parser.add_argument("-o", "--output", default=default)
+    return parser.parse_args(args)
+
+
 def main():
+    ns = parse_args(sys.argv[1:])
+    with tempfile.TemporaryDirectory() as tmp:
+        cov_file = os.path.join(tmp, "coverage")
+        shutil.copy(ns.input, cov_file)
 
-    c = get_cursor()
-    schema = get_schema(c)
+        c = get_cursor(cov_file)
+        schema = get_schema(c)
 
-    if SCHEMATA_META[schema](c):
+        if SCHEMATA_META[schema](c):
 
-        SCHEMATA_ARC[schema](c)
+            SCHEMATA_ARC[schema](c)
 
-    else:
+        else:
 
-        SCHEMATA_LINE[schema](c)
+            SCHEMATA_LINE[schema](c)
 
-    c.connection.commit()
-    c.connection.close()
+        c.connection.commit()
+        c.connection.close()
+        
+        shutil.copy(cov_file, ns.output)
