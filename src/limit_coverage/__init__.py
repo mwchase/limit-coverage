@@ -1,5 +1,6 @@
 import argparse
 import collections
+import logging
 import os
 import pathlib
 import re
@@ -10,7 +11,7 @@ import tempfile
 import typing
 
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 FileID = typing.NewType("FileID", int)
 FileID.__doc__ = """\
@@ -26,6 +27,8 @@ TestModule.__doc__ = """The import path of a Python module containing tests."""
 MODULE_RE = re.compile(r"tests\.((?:\w+\.)*)test_(\w+)")
 
 Rows = typing.List[typing.Tuple[int]]
+
+logger = logging.getLogger(__name__)
 
 
 def modules_under_test(test_module: TestModule) -> typing.Iterator[SourceModule]:
@@ -147,8 +150,8 @@ def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: Rows):
     c.executemany("DELETE FROM line_bits WHERE rowid=?", rows_to_drop)
 
 
-def conditional_src(cwd: str) -> str:
-    maybe_src = os.path.join(cwd, "src")
+def conditional(dir_name: str, cwd: str) -> str:
+    maybe_src = os.path.join(cwd, dir_name)
     if os.path.isdir(maybe_src):
         return maybe_src
     return cwd
@@ -169,14 +172,25 @@ def get_whitelisted_ids(
 
     for id_, path in c.execute("SELECT id, path FROM file;"):
         repo_path = os.path.relpath(path, cwd)
+        logger.debug("Getting info for path %r", repo_path)
         # Single project case
         if repo_path.startswith((src, tests)):
-            source_root = conditional_src(cwd)
+            logger.debug("Single project case")
+            source_root = conditional("src", cwd)
         # "Monorepo" case
         else:
-            source_root = conditional_src(os.path.join(cwd, pathlib.Path(repo_path).parts[0]))
+            logger.debug("Possible monorepo case")
+            repo_path_pathlib = pathlib.Path(repo_path)
+            if repo_path_pathlib.parts[0] == "projects":
+                prefix = repo_path_pathlib.parts[:2]
+            else:
+                prefix = repo_path_pathlib.parts[:1]
+            source_root = conditional("src", os.path.join(cwd, *prefix))
+        logger.debug("Source root: %r", source_root)
         relpath = os.path.relpath(path, source_root)
+        logger.debug("Relpath: %r", relpath)
         if relpath.startswith((pardir, tests)):
+            logger.debug("Skipping whitelist")
             continue
         directory, file_ = os.path.split(os.path.splitext(relpath)[0])
         names = directory.split(os.sep)
@@ -232,23 +246,44 @@ def parse_args(args):
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", default=default)
     parser.add_argument("-o", "--output", default=default)
+    parser.add_argument("--log-level", default="warning")
     return parser.parse_args(args)
 
 
 def main():
     ns = parse_args(sys.argv[1:])
+    levels = {
+        'critical': logging.CRITICAL,
+        'error': logging.ERROR,
+        'warn': logging.WARNING,
+        'warning': logging.WARNING,
+        'info': logging.INFO,
+        'debug': logging.DEBUG
+    }
+    level = levels.get(ns.log_level.lower())
+    if level is None:
+        raise ValueError(
+            f"log level given: {ns.log_level}"
+            f" -- must be one of: {' | '.join(levels.keys())}")
+    logging.basicConfig(level=level)
     with tempfile.TemporaryDirectory() as tmp:
         cov_file = os.path.join(tmp, "coverage")
         shutil.copy(ns.input, cov_file)
 
         c = get_cursor(cov_file)
         schema = get_schema(c)
+        
+        logger.info("Input file had schema level %s", schema)
 
         if SCHEMATA_META[schema](c):
+
+            logger.info("Filtering arcs")
 
             SCHEMATA_ARC[schema](c)
 
         else:
+
+            logger.info("Filtering lines")
 
             SCHEMATA_LINE[schema](c)
 
