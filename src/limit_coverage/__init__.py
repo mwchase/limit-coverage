@@ -180,7 +180,12 @@ def get_whitelisted_ids(
         # "Monorepo" case
         else:
             logger.debug("Possible monorepo case")
-            source_root = conditional("src", os.path.join(conditional("projects", cwd), pathlib.Path(repo_path).parts[0]))
+            repo_path_pathlib = pathlib.Path(repo_path)
+            if repo_path_pathlib.parts[0] == "projects":
+                prefix = repo_path_pathlib.parts[:2]
+            else:
+                prefix = repo_path_pathlib.parts[:1]
+            source_root = conditional("src", os.path.join(cwd, *prefix))
         logger.debug("Source root: %r", source_root)
         relpath = os.path.relpath(path, source_root)
         logger.debug("Relpath: %r", relpath)
