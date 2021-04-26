@@ -181,7 +181,9 @@ def get_whitelisted_ids(
         else:
             logger.debug("Possible monorepo case")
             source_root = conditional("src", os.path.join(conditional("projects", cwd), pathlib.Path(repo_path).parts[0]))
+        logger.debug("Source root: %r", source_root)
         relpath = os.path.relpath(path, source_root)
+        logger.debug("Relpath: %r", relpath)
         if relpath.startswith((pardir, tests)):
             logger.debug("Skipping whitelist")
             continue
