@@ -10,7 +10,7 @@ import tempfile
 import typing
 
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 FileID = typing.NewType("FileID", int)
 FileID.__doc__ = """\
