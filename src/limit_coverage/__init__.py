@@ -147,8 +147,8 @@ def delete_line_bits(c: sqlite3.Cursor, rows_to_drop: Rows):
     c.executemany("DELETE FROM line_bits WHERE rowid=?", rows_to_drop)
 
 
-def conditional_src(cwd: str) -> str:
-    maybe_src = os.path.join(cwd, "src")
+def conditional(dir_name: str, cwd: str) -> str:
+    maybe_src = os.path.join(cwd, dir_name)
     if os.path.isdir(maybe_src):
         return maybe_src
     return cwd
@@ -171,10 +171,10 @@ def get_whitelisted_ids(
         repo_path = os.path.relpath(path, cwd)
         # Single project case
         if repo_path.startswith((src, tests)):
-            source_root = conditional_src(cwd)
+            source_root = conditional("src", cwd)
         # "Monorepo" case
         else:
-            source_root = conditional_src(os.path.join(cwd, pathlib.Path(repo_path).parts[0]))
+            source_root = conditional("src", os.path.join(conditional("projects", cwd), pathlib.Path(repo_path).parts[0]))
         relpath = os.path.relpath(path, source_root)
         if relpath.startswith((pardir, tests)):
             continue
